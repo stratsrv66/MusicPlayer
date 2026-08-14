@@ -9,6 +9,7 @@ using MusicPlatform.Infrastructure.Jobs;
 using MusicPlatform.Infrastructure.Media;
 using MusicPlatform.Infrastructure.Persistence;
 using MusicPlatform.Infrastructure.Security;
+using MusicPlatform.Infrastructure.Storage;
 using StackExchange.Redis;
 
 namespace MusicPlatform.Infrastructure;
