@@ -69,10 +69,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      set({ me: await meApi.get(), loading: false });
+      set({ me: await meApi.get() });
     } catch {
       clearTokens();
-      set({ me: null, loading: false });
+      set({ me: null });
+    } finally {
+      set({ loading: false });
     }
   },
 

@@ -128,6 +128,15 @@ static void AddCors(WebApplicationBuilder builder)
 
     builder.Services.AddCors(options => options.AddPolicy(CorsPolicyName, policy =>
     {
+        if (builder.Environment.IsDevelopment())
+        {
+            // En développement, autoriser toutes les origines (sans credentials) pour faciliter les tests depuis le téléphone.
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+            return;
+        }
+
         if (origins.Length == 0)
         {
             // Sans origine déclarée, aucune requête cross-origin n'est autorisée.
@@ -135,11 +144,19 @@ static void AddCors(WebApplicationBuilder builder)
             return;
         }
 
+        if (origins.Contains("*"))
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+            return;
+        }
+
         policy.WithOrigins(origins)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .WithExposedHeaders("Content-Range", "Accept-Ranges", "Content-Length")
-            .AllowCredentials();
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .WithExposedHeaders("Content-Range", "Accept-Ranges", "Content-Length")
+              .AllowCredentials();
     }));
 }
 

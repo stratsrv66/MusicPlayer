@@ -14,7 +14,9 @@ const PLAY_REPORT_THRESHOLD_SECONDS = 10;
 const PROGRESS_SAVE_INTERVAL_MS = 15000;
 
 /** Identifiant de session de lecture, utilisé pour dédupliquer les écoutes anonymes. */
-const SESSION_ID = crypto.randomUUID();
+const SESSION_ID = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+  ? crypto.randomUUID()
+  : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 /**
  * Pilote l'unique élément `<audio>` de l'application.
