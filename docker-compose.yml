@@ -1,0 +1,89 @@
+# Pile complète de la plateforme musicale.
+#
+# `docker compose up` suffit à disposer d'un environnement fonctionnel :
+# les migrations et les données de référence sont appliquées au démarrage de l'API.
+#
+# Les traitements différés (analyse audio, pochettes, exports) s'exécutent dans le
+# processus de l'API via un service hébergé : aucun conteneur worker n'est nécessaire.
+
+name: musicplatform
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-musicplatform}
+      POSTGRES_USER: ${POSTGRES_USER:-musicplatform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD est obligatoire}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Le port n'est publié qu'en local : en production, la base ne doit pas être exposée.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-musicplatform} -d ${POSTGRES_DB:-musicplatform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: src/MusicPlatform.Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-musicplatform};Username=${POSTGRES_USER:-musicplatform};Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__Redis: "redis:6379"
+      Jwt__Secret: ${JWT_SECRET:?JWT_SECRET est obligatoire (32 caractères minimum)}
+      Jwt__Issuer: ${JWT_ISSUER:-musicplatform}
+      Jwt__Audience: ${JWT_AUDIENCE:-musicplatform}
+      Jwt__AccessTokenLifetimeSeconds: ${JWT_ACCESS_TOKEN_LIFETIME:-900}
+      Jwt__RefreshTokenLifetimeDays: ${JWT_REFRESH_TOKEN_LIFETIME_DAYS:-30}
+      Storage__RootPath: /data/storage
+      Cors__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:8080}
+      Swagger__Enabled: ${SWAGGER_ENABLED:-false}
+      OpenTelemetry__OtlpEndpoint: ${OTLP_ENDPOINT:-}
+      Seed__Admin__Email: ${SEED_ADMIN_EMAIL:-}
+      Seed__Admin__Username: ${SEED_ADMIN_USERNAME:-}
+      Seed__Admin__Password: ${SEED_ADMIN_PASSWORD:-}
+    volumes:
+      - storage-data:/data/storage
+    ports:
+      - "127.0.0.1:${API_PORT:-5080}:8080"
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:

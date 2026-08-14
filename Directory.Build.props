@@ -1,0 +1,21 @@
+<Project>
+
+  <!-- Réglages communs à tous les projets .NET de la solution. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+    <!--
+      La globalisation invariante est désactivée volontairement : la normalisation Unicode
+      (Normalize(FormD)) est indispensable pour transformer « Électro » en slug « electro ».
+      Les images Docker doivent donc embarquer ICU.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

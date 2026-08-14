@@ -1,0 +1,221 @@
+name: CI
+
+# Intégration continue : compilation, tests et construction des images.
+# Aucun secret n'est nécessaire : les tests d'intégration démarrent leur propre
+# PostgreSQL via Testcontainers, et les valeurs sensibles sont factices.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Une nouvelle poussée annule l'exécution précédente de la même branche.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24'
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  backend:
+    name: Backend (build & tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Mettre en cache les paquets NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restaurer les dépendances
+        run: dotnet restore
+
+      - name: Compiler
+        # Les avertissements sont traités comme des erreurs (Directory.Build.props) :
+        # la compilation échoue donc sur tout code approximatif.
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Tests unitaires
+        run: >
+          dotnet test tests/MusicPlatform.UnitTests
+          --configuration Release --no-build
+          --logger "trx;LogFileName=unit.trx"
+          --results-directory TestResults
+
+      - name: Tests d'intégration
+        # Testcontainers démarre PostgreSQL ; Docker est disponible sur les runners Ubuntu.
+        run: >
+          dotnet test tests/MusicPlatform.IntegrationTests
+          --configuration Release --no-build
+          --logger "trx;LogFileName=integration.trx"
+          --results-directory TestResults
+
+      - name: Publier les résultats de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: TestResults/
+          retention-days: 7
+
+  frontend:
+    name: Frontend (build & tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier les types
+        run: npm run typecheck
+
+      - name: Analyse statique
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Compiler le site
+        run: npm run build
+
+      - name: Publier le site compilé
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist/
+          retention-days: 7
+
+  migrations:
+    name: Vérification des migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: musicplatform
+          POSTGRES_USER: musicplatform
+          POSTGRES_PASSWORD: ci-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U musicplatform"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Installer l'outil EF Core
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Appliquer les migrations sur une base vierge
+        env:
+          ConnectionStrings__Postgres: 'Host=localhost;Port=5432;Database=musicplatform;Username=musicplatform;Password=ci-password'
+        run: >
+          dotnet ef database update
+          --project src/MusicPlatform.Infrastructure
+          --startup-project src/MusicPlatform.Infrastructure
+
+      - name: Vérifier l'absence de modèle non migré
+        # Une modification d'entité oubliée produirait une migration en attente :
+        # la commande échoue alors, ce qui bloque la fusion.
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project src/MusicPlatform.Infrastructure
+          --startup-project src/MusicPlatform.Infrastructure
+
+  docker:
+    name: Construction des images
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construire l'image de l'API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/MusicPlatform.Api/Dockerfile
+          push: false
+          load: true
+          tags: musicplatform-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Construire l'image du site
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          push: false
+          load: true
+          tags: musicplatform-web:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Démarrer la pile et vérifier les sondes de santé
+        env:
+          POSTGRES_PASSWORD: ci-password
+          JWT_SECRET: continuous-integration-signing-key-32-chars-min
+          WEB_PORT: 8080
+          API_PORT: 5080
+        run: |
+          docker compose up -d
+          # La boucle est bornée : elle échoue au bout de 60 tentatives.
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://localhost:5080/health/ready > /dev/null; then
+              echo "L'API est prête."
+              curl --fail --silent http://localhost:8080/api/v1/genres > /dev/null
+              echo "Le site répond et relaie l'API."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "La pile n'est pas devenue saine dans le délai imparti."
+          docker compose logs --tail 100
+          exit 1
+
+      - name: Arrêter la pile
+        if: always()
+        run: docker compose down -v

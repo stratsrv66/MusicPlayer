@@ -1,0 +1,29 @@
+# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+artifacts/
+TestResults/
+coverage/
+*.trx
+
+# --- Node ---
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# --- Secrets et données locales ---
+.env
+.env.local
+*.pfx
+storage/
+/data/
+
+# --- Éditeurs et système ---
+.vs/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

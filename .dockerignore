@@ -1,0 +1,17 @@
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.git
+**/.github
+**/.vs
+**/.idea
+**/.vscode
+**/TestResults
+**/coverage
+.env
+.env.local
+storage/
+tests/
+web/dist
+*.md
