@@ -12,8 +12,7 @@ COPY MusicPlatform.slnx ./
 COPY src/ ./src/
 
 RUN dotnet restore src/MusicPlatform.Api/MusicPlatform.Api.csproj
-RUN dotnet build src/MusicPlatform.Api/MusicPlatform.Api.csproj -c Release --no-restore
-RUN dotnet publish src/MusicPlatform.Api/MusicPlatform.Api.csproj -c Release -o /app/publish --no-build
+RUN dotnet publish src/MusicPlatform.Api/MusicPlatform.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # ---------------------------------------------------------------------------
 # Image d'exécution.
