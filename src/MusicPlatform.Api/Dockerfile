@@ -15,9 +15,9 @@ COPY src/MusicPlatform.Application/MusicPlatform.Application.csproj src/MusicPla
 COPY src/MusicPlatform.Infrastructure/MusicPlatform.Infrastructure.csproj src/MusicPlatform.Infrastructure/
 COPY src/MusicPlatform.Api/MusicPlatform.Api.csproj src/MusicPlatform.Api/
 
+COPY src/ src/
 RUN dotnet restore src/MusicPlatform.Api/MusicPlatform.Api.csproj
 
-COPY src/ src/
 RUN dotnet publish src/MusicPlatform.Api/MusicPlatform.Api.csproj \
     -c Release \
     -o /app/publish \
