@@ -21,7 +21,6 @@ COPY src/ src/
 RUN dotnet publish src/MusicPlatform.Api/MusicPlatform.Api.csproj \
     -c Release \
     -o /app/publish \
-    --no-restore \
     /p:UseAppHost=false
 
 # ---------------------------------------------------------------------------
