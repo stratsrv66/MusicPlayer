@@ -6,17 +6,14 @@
 # des paquets NuGet reste en cache tant que les dépendances ne changent pas.
 # ---------------------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /
+WORKDIR /app
 COPY Directory.Build.props ./
 COPY MusicPlatform.slnx ./
 COPY src/ ./src/
 
 RUN dotnet restore src/MusicPlatform.Api/MusicPlatform.Api.csproj
-
-RUN dotnet publish src/MusicPlatform.Api/MusicPlatform.Api.csproj \
-    -c Release \
-    -o /app/publish \
-    /p:UseAppHost=false
+RUN dotnet build src/MusicPlatform.Api/MusicPlatform.Api.csproj -c Release --no-restore
+RUN dotnet publish src/MusicPlatform.Api/MusicPlatform.Api.csproj -c Release -o /app/publish --no-build
 
 # ---------------------------------------------------------------------------
 # Image d'exécution.
