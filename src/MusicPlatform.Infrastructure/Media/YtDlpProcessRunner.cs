@@ -168,8 +168,6 @@ public sealed class YtDlpProcessRunner(IOptions<YtDlpOptions> options, ILogger<Y
         arguments.Add("--no-warnings");
         arguments.Add("--retries");
         arguments.Add("3");
-        arguments.Add("--extractor-args");
-        arguments.Add("youtube:player_client=web,mweb,default");
 
         var cookiesFile = ResolveCookiesPath();
         if (cookiesFile is not null)
