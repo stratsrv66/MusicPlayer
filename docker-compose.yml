@@ -67,6 +67,10 @@ services:
       YtDlp__MaxDurationSeconds: ${YTDLP_MAX_DURATION_SECONDS:-900}
       YtDlp__TimeoutSeconds: ${YTDLP_TIMEOUT_SECONDS:-300}
       YtDlp__CookiesFile: ${YTDLP_COOKIES_FILE:-/app/cookies.txt}
+      YtDlp__PlayerClients: ${YTDLP_PLAYER_CLIENTS:-tv,web_safari,web}
+      YtDlp__ForceIpv4: ${YTDLP_FORCE_IPV4:-true}
+      YtDlp__ProxyUrl: ${YTDLP_PROXY_URL:-}
+      YtDlp__SleepRequestsSeconds: ${YTDLP_SLEEP_REQUESTS_SECONDS:-1}
       Cors__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:8080}
       Swagger__Enabled: ${SWAGGER_ENABLED:-false}
       OpenTelemetry__OtlpEndpoint: ${OTLP_ENDPOINT:-}

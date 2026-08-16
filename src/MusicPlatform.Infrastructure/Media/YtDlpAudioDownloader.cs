@@ -67,9 +67,15 @@ public sealed class YtDlpAudioDownloader(YtDlpProcessRunner runner, ILogger<YtDl
         if (result.ExitCode != 0)
         {
             logger.LogWarning("yt-dlp exited with code {ExitCode}: {Error}", result.ExitCode, result.StandardError);
+
+            // Un refus d'authentification se corrige côté serveur, pas côté utilisateur :
+            // le message le distingue d'une vidéo réellement indisponible pour ne pas
+            // envoyer chercher un autre lien alors que les cookies sont à renouveler.
             throw new UnprocessableException(
                 ErrorCodes.TrackImportFailed,
-                "The audio could not be downloaded. It may be unavailable, private or restricted.");
+                YtDlpProcessRunner.IsAuthenticationFailure(result.StandardError)
+                    ? "YouTube refused the download from this server. The import cookies have expired and need to be renewed."
+                    : "The audio could not be downloaded. It may be unavailable, private or restricted.");
         }
 
         var metadataJson = YtDlpJson.FirstObjectLine(result.StandardOutput);

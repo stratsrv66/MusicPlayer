@@ -30,7 +30,11 @@ WORKDIR /app
 #     pas entrer en conflit avec les paquets Python du système ;
 #   - ffmpeg, dont yt-dlp se sert pour extraire la piste audio en MP3 ;
 #   - nodejs, requis par yt-dlp pour résoudre les challenges JavaScript de YouTube
-#     (signature et n-challenge) lors de l'utilisation du client web avec cookies.
+#     (signature et n-challenge) que servent les clients « web ».
+#
+# yt-dlp doit rester à jour : YouTube modifie régulièrement ses extracteurs, et une
+# version figée finit par échouer même avec des cookies valides. Reconstruire l'image
+# sans cache (docker compose build --no-cache api) réinstalle la dernière version.
 # Retirer ces paquets ne casse pas l'application : seul l'import par lien devient
 # indisponible et répond alors 503.
 RUN apt-get update \
