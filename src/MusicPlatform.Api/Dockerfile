@@ -25,14 +25,16 @@ WORKDIR /app
 # curl sert uniquement à la sonde de santé du conteneur ; l'application s'exécute
 # sous le compte sans privilège fourni par l'image de base.
 #
-# L'import depuis un lien YouTube ajoute deux dépendances :
+# L'import depuis un lien YouTube ajoute trois dépendances :
 #   - yt-dlp, paquet Python installé dans un environnement virtuel dédié afin de ne
 #     pas entrer en conflit avec les paquets Python du système ;
-#   - ffmpeg, dont yt-dlp se sert pour extraire la piste audio en MP3.
+#   - ffmpeg, dont yt-dlp se sert pour extraire la piste audio en MP3 ;
+#   - nodejs, requis par yt-dlp pour résoudre les challenges JavaScript de YouTube
+#     (signature et n-challenge) lors de l'utilisation du client web avec cookies.
 # Retirer ces paquets ne casse pas l'application : seul l'import par lien devient
 # indisponible et répond alors 503.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ffmpeg python3 python3-venv \
+    && apt-get install -y --no-install-recommends curl ffmpeg python3 python3-venv nodejs \
     && python3 -m venv /opt/ytdlp \
     && /opt/ytdlp/bin/pip install --no-cache-dir --upgrade yt-dlp \
     && rm -rf /var/lib/apt/lists/* \
