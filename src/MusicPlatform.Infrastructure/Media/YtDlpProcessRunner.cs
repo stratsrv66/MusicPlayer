@@ -169,6 +169,11 @@ public sealed class YtDlpProcessRunner(IOptions<YtDlpOptions> options, ILogger<Y
         arguments.Add("--retries");
         arguments.Add("3");
 
+        // Le client iOS contourne les restrictions de format imposées par YouTube sur les
+        // IP de datacenter. Les cookies restent actifs pour passer l'authentification.
+        arguments.Add("--extractor-args");
+        arguments.Add("youtube:player_client=ios,web");
+
         var cookiesFile = ResolveCookiesPath();
         if (cookiesFile is not null)
         {
