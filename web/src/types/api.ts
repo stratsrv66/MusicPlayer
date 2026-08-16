@@ -135,6 +135,100 @@ export interface UploadAccepted {
   status: TrackStatus;
 }
 
+export type PlaylistImportStatus = 'Pending' | 'Running' | 'Completed' | 'Failed' | 'Cancelled';
+export type PlaylistImportItemStatus =
+  | 'Pending'
+  | 'Running'
+  | 'Imported'
+  | 'Duplicate'
+  | 'Failed'
+  | 'Cancelled';
+
+export interface ExternalPlaylist {
+  id: string;
+  name: string;
+  owner?: string | null;
+  coverUrl?: string | null;
+  trackCount: number;
+  url: string;
+}
+
+/**
+ * Morceau relevé lors de l'énumération de la playlist. Ces métadonnées restent
+ * sommaires : les métadonnées définitives sont lues au téléchargement.
+ */
+export interface ExternalTrack {
+  sourceId: string;
+  title: string;
+  artistName: string;
+  durationSeconds: number;
+}
+
+export interface PlaylistPreview {
+  playlist: ExternalPlaylist;
+  tracks: ExternalTrack[];
+}
+
+export interface PlaylistImportProgress {
+  total: number;
+  processed: number;
+  pending: number;
+  running: number;
+  imported: number;
+  duplicate: number;
+  failed: number;
+  cancelled: number;
+}
+
+export interface PlaylistImport {
+  id: string;
+  name: string;
+  sourceUrl?: string | null;
+  status: PlaylistImportStatus;
+  visibility: ContentVisibility;
+  playlistId?: string | null;
+  failureReason?: string | null;
+  progress: PlaylistImportProgress;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+export interface PlaylistImportItem {
+  id: string;
+  position: number;
+  title: string;
+  artistName: string;
+  durationSeconds: number;
+  status: PlaylistImportItemStatus;
+  failureReason?: string | null;
+  attempts: number;
+  trackId?: string | null;
+}
+
+export interface PlaylistImportDetails {
+  import: PlaylistImport;
+  items: PlaylistImportItem[];
+}
+
+/** Demande de lancement d'un import de playlist YouTube. */
+export interface StartPlaylistImportRequest {
+  url: string;
+  visibility: ContentVisibility;
+  createPlaylist: boolean;
+}
+
+/** Import d'un morceau depuis un lien YouTube. Les champs vides sont déduits de la vidéo. */
+export interface ImportYoutubeRequest {
+  url: string;
+  title?: string;
+  artistName?: string;
+  description?: string;
+  genreId?: string;
+  year?: number;
+  visibility: ContentVisibility;
+  tags?: string[];
+}
+
 export interface LikeState {
   liked: boolean;
   likeCount?: number | null;

@@ -19,6 +19,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<TrackCover> TrackCovers => Set<TrackCover>();
     public DbSet<TrackTag> TrackTags => Set<TrackTag>();
     public DbSet<TrackLike> TrackLikes => Set<TrackLike>();
+    public DbSet<TrackExternalId> TrackExternalIds => Set<TrackExternalId>();
     public DbSet<UploadOperation> UploadOperations => Set<UploadOperation>();
 
     public DbSet<Album> Albums => Set<Album>();
@@ -29,6 +30,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PlaylistItem> PlaylistItems => Set<PlaylistItem>();
     public DbSet<PlaylistFollow> PlaylistFollows => Set<PlaylistFollow>();
     public DbSet<PlaylistFavorite> PlaylistFavorites => Set<PlaylistFavorite>();
+    public DbSet<PlaylistImport> PlaylistImports => Set<PlaylistImport>();
+    public DbSet<PlaylistImportItem> PlaylistImportItems => Set<PlaylistImportItem>();
 
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<PlayEvent> PlayEvents => Set<PlayEvent>();

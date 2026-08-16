@@ -4,10 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MusicPlatform.Application.Abstractions;
+using MusicPlatform.Application.Features.Import;
 using MusicPlatform.Infrastructure.Caching;
 using MusicPlatform.Infrastructure.Jobs;
 using MusicPlatform.Infrastructure.Media;
 using MusicPlatform.Infrastructure.Persistence;
+using MusicPlatform.Infrastructure.Providers;
 using MusicPlatform.Infrastructure.Security;
 using MusicPlatform.Infrastructure.Storage;
 using StackExchange.Redis;
@@ -45,12 +47,16 @@ public static class DependencyInjection
 
         services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.Configure<YtDlpOptions>(configuration.GetSection(YtDlpOptions.SectionName));
 
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IImageProcessor, ImageSharpProcessor>();
+        services.AddSingleton<YtDlpProcessRunner>();
+        services.AddSingleton<IAudioDownloader, YtDlpAudioDownloader>();
+        services.AddSingleton<IPlaylistProvider, YoutubePlaylistProvider>();
         services.AddScoped<IAudioMetadataExtractor, TagLibAudioMetadataExtractor>();
 
         AddRedis(services, configuration);

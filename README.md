@@ -17,6 +17,8 @@ le tout démarrable par une seule commande Docker.
 - [Démarrage rapide (Docker)](#démarrage-rapide-docker)
 - [Développement local](#développement-local)
 - [Variables d'environnement](#variables-denvironnement)
+- [Import depuis un lien YouTube](#import-depuis-un-lien-youtube)
+- [Import de playlists](#import-de-playlists)
 - [Base de données et migrations](#base-de-données-et-migrations)
 - [Tests](#tests)
 - [API](#api)
@@ -33,9 +35,15 @@ le tout démarrable par une seule commande Docker.
 tokens, profil public ou privé, avatar, biographie, liens sociaux, export des données
 personnelles, suppression de compte avec anonymisation.
 
-**Morceaux** — import de fichiers audio (20 Mo maximum), extraction des métadonnées et de
-la pochette embarquée, génération de trois tailles de pochette, visibilité publique, non
-répertoriée ou privée, remplacement du fichier, publication et dépublication.
+**Morceaux** — import de fichiers audio (20 Mo maximum) ou depuis un lien YouTube,
+extraction des métadonnées et de la pochette embarquée, génération de trois tailles de
+pochette, visibilité publique, non répertoriée ou privée, remplacement du fichier,
+publication et dépublication.
+
+**Import de playlists YouTube** — aperçu du contenu avant import, rapprochement des
+morceaux déjà présents pour éviter les doublons, téléchargement en file avec parallélisme
+configurable, progression en temps réel, annulation, reprise après interruption et relance
+des morceaux en échec.
 
 **Écoute** — streaming HTTP avec prise en charge des requêtes `Range`, lecteur persistant
 entre les pages, file d'attente, lecture aléatoire, répétition, mini-lecteur, lecteur plein
@@ -106,8 +114,11 @@ jamais interrompue par une navigation.
 | Docker + Docker Compose | 24+ | Lancer la pile complète |
 | SDK .NET | 10.0 | Développement backend |
 | Node.js | 24+ | Développement frontend |
+| yt-dlp + ffmpeg | à jour | Import d'un morceau depuis un lien YouTube |
 
-Docker seul suffit pour faire tourner le projet.
+Docker seul suffit pour faire tourner le projet : l'image de l'API embarque déjà yt-dlp
+et ffmpeg. En développement local hors Docker, ces deux outils doivent être installés
+pour que l'import par lien fonctionne — voir « Import depuis un lien YouTube ».
 
 ---
 
@@ -200,12 +211,140 @@ code. `.env.example` liste l'ensemble des clés. Les plus importantes :
 | `SWAGGER_ENABLED` | non | Expose `/swagger`. À laisser à `false` en production |
 | `OTLP_ENDPOINT` | non | Collecteur OpenTelemetry. Vide = export désactivé |
 | `SEED_ADMIN_*` | non | Compte administrateur initial |
+| `YTDLP_AUDIO_QUALITY` | non | Débit de l'encodage MP3 à l'import (`128K` par défaut) |
+| `YTDLP_MAX_DURATION_SECONDS` | non | Durée maximale d'une vidéo importable (900 par défaut) |
+| `YTDLP_TIMEOUT_SECONDS` | non | Délai maximal d'un téléchargement (300 par défaut) |
 
 L'API refuse de démarrer si `Jwt:Secret` est absent ou trop court : une mauvaise
 configuration est détectée immédiatement plutôt qu'à la première connexion.
 
 Les quotas de limitation de débit sont ajustables sans recompilation, par exemple
 `RateLimiting__auth__PermitLimit=20`.
+
+---
+
+## Import depuis un lien YouTube
+
+Depuis la page « Importer un morceau », choisir la source « Lien YouTube » suffit : le
+serveur télécharge la piste audio au format MP3 et utilise la miniature de la vidéo comme
+pochette. Titre, artiste et année sont repris de la vidéo lorsque les champs sont laissés
+vides. Le morceau rejoint ensuite le pipeline habituel — analyse des métadonnées,
+génération des trois tailles de pochette, puis publication.
+
+Le téléchargement s'appuie sur le paquet Python [`yt-dlp`](https://github.com/yt-dlp/yt-dlp),
+appelé comme processus enfant, et sur `ffmpeg` pour l'extraction audio. **L'image Docker de
+l'API les installe elle-même** : `docker compose up -d --build` suffit, rien n'est à
+installer sur la machine hôte en dehors de Docker.
+
+Pour un développement local hors Docker, en revanche :
+
+```bash
+python -m pip install --upgrade yt-dlp
+# ffmpeg : apt install ffmpeg | brew install ffmpeg | winget install Gyan.FFmpeg
+```
+
+Si `yt-dlp` est absent, seul l'import par lien est indisponible : l'endpoint répond `503`
+et le reste de l'application fonctionne normalement.
+
+**Maintenir yt-dlp à jour.** YouTube modifie régulièrement son lecteur, ce qui casse les
+versions anciennes de yt-dlp. La version installée est celle du jour de la construction de
+l'image : si les imports commencent à échouer en `422`, reconstruire l'image la met à jour.
+
+```bash
+docker compose build --no-cache api && docker compose up -d api
+```
+
+Réglages (section `YtDlp`, surchargeable par variables d'environnement) :
+
+| Clé | Défaut | Rôle |
+|---|---|---|
+| `YtDlp__ExecutablePath` | `yt-dlp` | Commande à exécuter |
+| `YtDlp__PythonPath` | vide | Interpréteur à utiliser si yt-dlp n'est installé que comme module (`python -m yt_dlp`) |
+| `YtDlp__AudioQuality` | `128K` | Débit de l'encodage MP3 |
+| `YtDlp__MaxDurationSeconds` | `900` | Durée maximale d'une vidéo. À `128K`, 15 minutes tiennent sous la limite de 20 Mo |
+| `YtDlp__TimeoutSeconds` | `300` | Délai au-delà duquel le téléchargement est abandonné |
+| `YtDlp__WorkingDirectory` | dossier temporaire | Emplacement des téléchargements en cours |
+| `YtDlp__CookiesFile` | vide | Cookies au format Netscape, pour les vidéos à accès restreint |
+
+Deux garde-fous encadrent la fonctionnalité : seules les URL des domaines YouTube sont
+acceptées — l'outil de téléchargement ne peut donc pas être dirigé vers une adresse
+arbitraire, notamment interne au réseau du serveur — et l'URL est passée en argument
+d'un processus, sans shell, ce qui exclut toute injection de commande.
+
+Il revient enfin à l'utilisateur de s'assurer qu'il dispose des droits nécessaires sur le
+contenu qu'il importe.
+
+---
+
+## Import de playlists
+
+Depuis « Importer une playlist », on colle le lien d'une playlist YouTube publique — ou on
+parcourt les playlists publiques d'une chaîne — puis on vérifie le contenu avant de lancer
+l'opération. La progression s'affiche ensuite morceau par morceau.
+
+### Un import de playlist n'est qu'une suite d'imports unitaires
+
+Les morceaux sont traités **un par un**, et chacun passe par la fonction qui importe un
+lien YouTube isolé : `TrackImportService.ImportForOwnerAsync`. Même appel yt-dlp, mêmes
+métadonnées lues sur la vidéo, même pochette issue de la miniature. Un morceau importé via
+une playlist est donc indiscernable d'un morceau importé seul.
+
+Pour chaque morceau, dans l'ordre :
+
+```
+Rapprochement → Import yt-dlp → Traitement du fichier → Ajout à la playlist
+```
+
+Le morceau n'est ajouté à la playlist qu'une fois **réellement écoutable**. Le traitement
+du fichier est déclenché immédiatement plutôt que confié à la file de travaux : celle-ci
+est consommée séquentiellement, et l'import occupant son unique consommateur, les morceaux
+seraient restés en attente jusqu'à la fin de l'import complet.
+
+| Étape | Contrat | Implémentation |
+|---|---|---|
+| Énumération | `IPlaylistProvider` | `YoutubePlaylistProvider` (`yt-dlp --flat-playlist`) |
+| Normalisation | `MetadataNormalizer` | retire l'habillage éditorial, les accents et la ponctuation |
+| Rapprochement | `TrackMatcher` | identifiant de vidéo → clé artiste+titre → durée |
+| Import | `TrackImportService` | chemin d'import YouTube unitaire, partagé |
+| Traitement | `TrackProcessingService` | durée réelle, pochette, promotion du fichier |
+
+L'énumération utilise `--flat-playlist` : elle liste le contenu sans transférer le moindre
+média, ce qui rend l'aperçu immédiat.
+
+### Visibilité des morceaux importés
+
+Le lecteur du navigateur diffuse le son via un élément `<audio>`, qui **ne transmet aucun
+en-tête d'authentification**. La requête de streaming arrive donc anonyme, et un morceau
+`PRIVATE` lui est refusé : un morceau privé n'est pas écoutable depuis l'interface.
+
+L'import propose par conséquent **« non répertorié »** par défaut — écoutable par son
+propriétaire, absent des recherches et de la page d'accueil. Le choix `PRIVATE` reste
+possible et signalé comme tel dans le formulaire.
+
+Rendre les morceaux privés diffusables demanderait des URL de streaming signées, à courte
+durée de vie, que le lecteur pourrait présenter sans en-tête.
+
+### Éviter les doublons
+
+Avant tout téléchargement, chaque morceau est comparé à la bibliothèque de l'utilisateur :
+d'abord par identifiant de vidéo YouTube, puis par clé « artiste|titre » normalisée
+départagée par la durée à cinq secondes près. Un morceau reconnu est rattaché sans être
+retéléchargé et son état passe à « Déjà présent ».
+
+L'identifiant de la vidéo est conservé sur le morceau (`track_external_ids`), y compris
+pour un import unitaire : réimporter la même playlist, ou une playlist qui recoupe la
+précédente, ne retélécharge rien.
+
+### Robustesse
+
+L'inventaire des morceaux est écrit en base au lancement : l'import survit donc à un
+redémarrage du serveur, `StalledJobRecoveryService` le remettant en file au démarrage. Les
+morceaux avancent par lots dont la taille est celle du parallélisme configuré, chaque état
+étant persisté à la fin du lot. Un arrêt brutal ne fait perdre qu'un lot, une annulation
+est prise en compte entre deux lots, et les morceaux en échec se relancent depuis
+l'interface sans retraiter ceux déjà importés.
+
+Une playlist est limitée à 500 morceaux.
 
 ---
 

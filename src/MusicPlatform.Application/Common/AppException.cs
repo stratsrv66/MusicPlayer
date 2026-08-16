@@ -17,6 +17,14 @@ public static class ErrorCodes
     public const string TrackUploadInvalid = "TRACK_UPLOAD_INVALID";
     public const string TrackUploadTooLarge = "TRACK_UPLOAD_TOO_LARGE";
     public const string TrackFileMissing = "TRACK_FILE_MISSING";
+    public const string TrackImportFailed = "TRACK_IMPORT_FAILED";
+    public const string TrackImportUnavailable = "TRACK_IMPORT_UNAVAILABLE";
+    public const string PlaylistImportNotFound = "PLAYLIST_IMPORT_NOT_FOUND";
+    public const string PlaylistImportUnreadable = "PLAYLIST_IMPORT_UNREADABLE";
+    public const string PlaylistImportUnsupportedSource = "PLAYLIST_IMPORT_UNSUPPORTED_SOURCE";
+    public const string PlaylistImportNotConfigured = "PLAYLIST_IMPORT_NOT_CONFIGURED";
+    public const string PlaylistImportTooLarge = "PLAYLIST_IMPORT_TOO_LARGE";
+    public const string PlaylistImportAlreadyRunning = "PLAYLIST_IMPORT_ALREADY_RUNNING";
     public const string CoverNotFound = "COVER_NOT_FOUND";
     public const string PlaylistNotFound = "PLAYLIST_NOT_FOUND";
     public const string PlaylistAccessDenied = "PLAYLIST_ACCESS_DENIED";
@@ -91,3 +99,6 @@ public sealed class PayloadTooLargeException(string message) : AppException(Erro
 /// <summary>Type de contenu non pris en charge : 415.</summary>
 public sealed class UnsupportedMediaTypeException(string message)
     : AppException(ErrorCodes.UnsupportedMediaType, message, 415);
+
+/// <summary>Dépendance externe indisponible ou non configurée : 503.</summary>
+public sealed class ServiceUnavailableException(string code, string message) : AppException(code, message, 503);

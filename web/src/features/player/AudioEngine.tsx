@@ -114,9 +114,22 @@ export function AudioEngine() {
   // Applique une demande de repositionnement puis la consomme.
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio && seekRequest !== null) {
-      audio.currentTime = seekRequest;
-      usePlayerStore.getState().consumeSeek();
+    if (!audio || seekRequest === null) {
+      return;
+    }
+
+    audio.currentTime = seekRequest;
+    usePlayerStore.getState().consumeSeek();
+
+    // En fin de morceau, le navigateur met l'élément média en pause. Rejouer le même
+    // morceau (répétition unitaire, ou file d'un seul titre) ne change alors ni
+    // `isPlaying` ni le morceau courant : l'effet de lecture ne se réexécute pas et
+    // le repositionnement seul laisserait la lecture arrêtée au début. On réapplique
+    // donc ici l'intention du store.
+    if (audio.paused && usePlayerStore.getState().isPlaying) {
+      audio.play().catch(() => {
+        usePlayerStore.getState().pause();
+      });
     }
   }, [seekRequest]);
 

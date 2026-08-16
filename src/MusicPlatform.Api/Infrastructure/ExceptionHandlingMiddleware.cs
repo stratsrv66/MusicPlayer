@@ -127,6 +127,7 @@ public sealed class ExceptionHandlingMiddleware(
         415 => "Unsupported media type",
         422 => "Unprocessable entity",
         429 => "Too many requests",
+        503 => "Service unavailable",
         _ => "Error",
     };
 

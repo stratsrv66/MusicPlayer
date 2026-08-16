@@ -98,6 +98,50 @@ public sealed class AudioFileValidatorTests
     }
 }
 
+/// <summary>
+/// Normalisation des liens d'import. Au-delà du confort, le contrôle du domaine évite
+/// que l'outil de téléchargement soit dirigé vers une adresse arbitraire.
+/// </summary>
+public sealed class YoutubeUrlTests
+{
+    [Theory]
+    [InlineData("https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://m.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://music.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://youtu.be/dQw4w9WgXcQ")]
+    [InlineData("https://www.youtube.com/shorts/dQw4w9WgXcQ")]
+    [InlineData("https://www.youtube.com/embed/dQw4w9WgXcQ")]
+    public void AcceptsTheUsualYoutubeLinkForms(string url)
+    {
+        Assert.Equal("https://www.youtube.com/watch?v=dQw4w9WgXcQ", TrackImportService.NormalizeYoutubeUrl(url));
+    }
+
+    [Fact]
+    public void DropsTheExtraQueryParameters()
+    {
+        var normalized = TrackImportService.NormalizeYoutubeUrl(
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL0000000000&index=4&t=42s");
+
+        Assert.Equal("https://www.youtube.com/watch?v=dQw4w9WgXcQ", normalized);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("pas une url")]
+    [InlineData("file:///etc/passwd")]
+    [InlineData("https://youtube.com.attaquant.example/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://vimeo.com/123456789")]
+    [InlineData("http://localhost:8080/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://www.youtube.com/watch?v=trop-court")]
+    [InlineData("https://www.youtube.com/results?search_query=musique")]
+    public void RejectsAnythingThatIsNotAYoutubeVideo(string url)
+    {
+        Assert.Throws<InputValidationException>(() => TrackImportService.NormalizeYoutubeUrl(url));
+    }
+}
+
 /// <summary>Normalisation des tags saisis par les utilisateurs.</summary>
 public sealed class TagNormalizationTests
 {

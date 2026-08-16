@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MusicPlatform.Application.Abstractions;
 using MusicPlatform.Application.Features.Account;
+using MusicPlatform.Application.Features.Import;
 using MusicPlatform.Application.Features.Tracks;
 
 namespace MusicPlatform.Infrastructure.Jobs;
@@ -13,11 +14,12 @@ public enum BackgroundJobKind
 {
     TrackProcessing = 0,
     UserExport = 1,
+    PlaylistImport = 2,
 }
 
 /// <summary>Travail placé dans la file d'exécution différée.</summary>
 /// <param name="Kind">Type de traitement à déclencher.</param>
-/// <param name="TargetId">Identifiant de l'opération d'upload ou de l'export concerné.</param>
+/// <param name="TargetId">Identifiant de l'upload, de l'export ou de l'import concerné.</param>
 public readonly record struct BackgroundJob(BackgroundJobKind Kind, Guid TargetId);
 
 /// <summary>
@@ -46,6 +48,10 @@ public sealed class ChannelBackgroundJobQueue : IBackgroundJobQueue
     /// <inheritdoc />
     public ValueTask EnqueueUserExportAsync(Guid exportId, CancellationToken cancellationToken) =>
         _channel.Writer.WriteAsync(new BackgroundJob(BackgroundJobKind.UserExport, exportId), cancellationToken);
+
+    /// <inheritdoc />
+    public ValueTask EnqueuePlaylistImportAsync(Guid importId, CancellationToken cancellationToken) =>
+        _channel.Writer.WriteAsync(new BackgroundJob(BackgroundJobKind.PlaylistImport, importId), cancellationToken);
 }
 
 /// <summary>
@@ -101,6 +107,12 @@ public sealed class BackgroundJobRunner(
                 await scope.ServiceProvider
                     .GetRequiredService<UserExportGenerator>()
                     .GenerateAsync(job.TargetId, cancellationToken);
+                break;
+
+            case BackgroundJobKind.PlaylistImport:
+                await scope.ServiceProvider
+                    .GetRequiredService<PlaylistImportRunner>()
+                    .ProcessAsync(job.TargetId, cancellationToken);
                 break;
 
             default:

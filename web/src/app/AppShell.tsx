@@ -80,7 +80,10 @@ export function AppShell() {
                   <HistoryIcon size={18} /> Écoutés récemment
                 </NavLink>
                 <NavLink to="/upload">
-                  <UploadIcon size={18} /> Importer
+                  <UploadIcon size={18} /> Importer un morceau
+                </NavLink>
+                <NavLink to="/import">
+                  <MusicIcon size={18} /> Importer une playlist
                 </NavLink>
 
                 <p className="nav-section">Mon compte</p>

@@ -6,6 +6,7 @@ using MusicPlatform.Application.Features.Auth;
 using MusicPlatform.Application.Features.Catalog;
 using MusicPlatform.Application.Features.Comments;
 using MusicPlatform.Application.Features.Discovery;
+using MusicPlatform.Application.Features.Import;
 using MusicPlatform.Application.Features.Moderation;
 using MusicPlatform.Application.Features.Playback;
 using MusicPlatform.Application.Features.Playlists;
@@ -33,7 +34,12 @@ public static class DependencyInjection
 
         services.AddScoped<TagResolver>();
         services.AddScoped<TrackService>();
+        services.AddScoped<TrackImportService>();
         services.AddScoped<TrackProcessingService>();
+
+        services.AddScoped<TrackMatcher>();
+        services.AddScoped<PlaylistImportService>();
+        services.AddScoped<PlaylistImportRunner>();
         services.AddScoped<TrackStreamService>();
         services.AddScoped<TrackCoverService>();
         services.AddScoped<LikeService>();

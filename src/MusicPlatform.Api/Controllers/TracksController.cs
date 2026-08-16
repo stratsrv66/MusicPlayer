@@ -15,6 +15,7 @@ namespace MusicPlatform.Api.Controllers;
 [Route("api/v1/tracks")]
 public sealed class TracksController(
     TrackService trackService,
+    TrackImportService importService,
     TrackStreamService streamService,
     TrackCoverService coverService,
     LikeService likeService,
@@ -65,6 +66,37 @@ public sealed class TracksController(
         ArgumentNullException.ThrowIfNull(form);
 
         var result = await trackService.CreateAsync(form.ToRequest(), form.File.ToUploadedFile(), cancellationToken);
+        return Accepted($"/api/v1/tracks/{result.TrackId}", result);
+    }
+
+    /// <summary>
+    /// Importe un morceau depuis un lien YouTube : la piste audio est téléchargée par le
+    /// serveur au format MP3, et la miniature de la vidéo devient la pochette du morceau.
+    /// </summary>
+    /// <param name="request">
+    /// <c>url</c> (obligatoire, lien YouTube), <c>title</c>, <c>artistName</c>, <c>description</c>,
+    /// <c>genreId</c> (GUID), <c>year</c> (entier), <c>visibility</c> (<c>PUBLIC</c>, <c>UNLISTED</c>
+    /// ou <c>PRIVATE</c>) et <c>tags</c> (tableau de chaînes). Les champs absents sont déduits
+    /// des métadonnées de la vidéo.
+    /// </param>
+    /// <response code="202">Import accepté, traitement du fichier en cours.</response>
+    /// <response code="400">Le lien fourni n'est pas une URL de vidéo YouTube.</response>
+    /// <response code="413">La piste audio dépasse 20 Mo.</response>
+    /// <response code="422">La vidéo est indisponible, trop longue ou non téléchargeable.</response>
+    /// <response code="503">L'import n'est pas disponible : yt-dlp n'est pas installé sur le serveur.</response>
+    [HttpPost("import/youtube")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.Upload)]
+    [ProducesResponseType<UploadAcceptedDto>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<UploadAcceptedDto>> ImportFromYoutube(
+        ImportYoutubeTrackRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await importService.ImportFromYoutubeAsync(request, cancellationToken);
         return Accepted($"/api/v1/tracks/{result.TrackId}", result);
     }
 

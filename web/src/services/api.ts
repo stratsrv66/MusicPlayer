@@ -9,20 +9,26 @@ import type {
   AuthResponse,
   Comment,
   Genre,
+  ExternalPlaylist,
   HistoryEntry,
   Home,
+  ImportYoutubeRequest,
   LikeState,
   Me,
   Paged,
   PlaybackProgress,
   Playlist,
   PlaylistDetails,
+  PlaylistImport,
+  PlaylistImportDetails,
+  PlaylistPreview,
   PlaysSeries,
   RegisterPlayResult,
   Report,
   ReportStatus,
   SearchResult,
   SearchType,
+  StartPlaylistImportRequest,
   Tag,
   Track,
   TrackAnalytics,
@@ -150,6 +156,10 @@ export const tracksApi = {
 
   create: (form: FormData) => request<UploadAccepted>('/tracks', { method: 'POST', formData: form }),
 
+  /** Importe un morceau depuis un lien YouTube : audio et pochette sont récupérés par le serveur. */
+  importFromYoutube: (body: ImportYoutubeRequest) =>
+    request<UploadAccepted>('/tracks/import/youtube', { method: 'POST', body }),
+
   replaceFile: (trackId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
@@ -192,6 +202,33 @@ export const tracksApi = {
 
   addComment: (trackId: string, content: string, timestampSeconds?: number | null) =>
     request<Comment>(`/tracks/${trackId}/comments`, { method: 'POST', body: { content, timestampSeconds } }),
+};
+
+/** Import de playlists YouTube. */
+export const importsApi = {
+  /** Décrit une playlist et ses morceaux sans rien importer. */
+  preview: (url: string) =>
+    request<PlaylistPreview>('/imports/playlists/preview', { method: 'POST', body: { url } }),
+
+  /** Liste les playlists publiques d'une chaîne. */
+  profilePlaylists: (profileId: string) =>
+    request<ExternalPlaylist[]>(`/imports/playlists/profile${query({ profileId })}`),
+
+  /** Programme l'import d'une playlist. */
+  start: (body: StartPlaylistImportRequest) =>
+    request<PlaylistImport>('/imports/playlists', { method: 'POST', body }),
+
+  /** Imports récents de l'utilisateur. */
+  list: () => request<PlaylistImport[]>('/imports/playlists'),
+
+  /** Progression d'un import et état de chacun de ses morceaux. */
+  get: (importId: string) => request<PlaylistImportDetails>(`/imports/playlists/${importId}`),
+
+  cancel: (importId: string) =>
+    request<PlaylistImport>(`/imports/playlists/${importId}/cancel`, { method: 'POST' }),
+
+  retry: (importId: string) =>
+    request<PlaylistImport>(`/imports/playlists/${importId}/retry`, { method: 'POST' }),
 };
 
 /** Modification et suppression des commentaires. */

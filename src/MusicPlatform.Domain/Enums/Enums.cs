@@ -100,3 +100,55 @@ public enum UserExportStatus
     Failed = 3,
     Expired = 4,
 }
+
+/// <summary>
+/// Plateforme externe dont un morceau est issu.
+///
+/// Conserver l'identifiant d'origine d'un morceau permet de le reconnaître lorsqu'une
+/// même playlist est réimportée, et donc de ne pas le retélécharger.
+/// </summary>
+public enum ExternalPlatform
+{
+    Youtube = 0,
+}
+
+/// <summary>Cycle de vie d'un import de playlist.</summary>
+public enum PlaylistImportStatus
+{
+    /// <summary>Morceaux inventoriés, traitement pas encore démarré.</summary>
+    Pending = 0,
+
+    /// <summary>Traitement en cours.</summary>
+    Running = 1,
+
+    /// <summary>Tous les morceaux ont atteint un état terminal.</summary>
+    Completed = 2,
+
+    /// <summary>L'import lui-même a échoué (playlist illisible, plateforme injoignable).</summary>
+    Failed = 3,
+
+    /// <summary>Interrompu à la demande de l'utilisateur.</summary>
+    Cancelled = 4,
+}
+
+/// <summary>État d'un morceau au sein d'un import de playlist.</summary>
+public enum PlaylistImportItemStatus
+{
+    /// <summary>En attente de traitement. Un import repris repart de cet état.</summary>
+    Pending = 0,
+
+    /// <summary>Traitement en cours : résolution de la source puis téléchargement.</summary>
+    Running = 1,
+
+    /// <summary>Morceau téléchargé et ajouté à la bibliothèque.</summary>
+    Imported = 2,
+
+    /// <summary>Déjà présent dans la bibliothèque : rattaché sans nouveau téléchargement.</summary>
+    Duplicate = 3,
+
+    /// <summary>Échec récupérable : le morceau peut être relancé.</summary>
+    Failed = 5,
+
+    /// <summary>Abandonné parce que l'import a été annulé.</summary>
+    Cancelled = 6,
+}

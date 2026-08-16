@@ -65,4 +65,7 @@ public interface IBackgroundJobQueue
 
     /// <summary>Enregistre un travail de génération d'archive d'export.</summary>
     ValueTask EnqueueUserExportAsync(Guid exportId, CancellationToken cancellationToken = default);
+
+    /// <summary>Enregistre un travail d'import de playlist externe.</summary>
+    ValueTask EnqueuePlaylistImportAsync(Guid importId, CancellationToken cancellationToken = default);
 }

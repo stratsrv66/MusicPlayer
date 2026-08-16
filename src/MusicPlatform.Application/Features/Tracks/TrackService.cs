@@ -101,12 +101,27 @@ public sealed class TrackService(
     /// Crée un morceau et enregistre son fichier audio. Le fichier est écrit en zone temporaire
     /// puis traité en arrière-plan : la requête HTTP ne porte pas le coût de l'analyse.
     /// </summary>
-    public async Task<UploadAcceptedDto> CreateAsync(CreateTrackRequest request, UploadedFile file, CancellationToken cancellationToken)
+    public Task<UploadAcceptedDto> CreateAsync(CreateTrackRequest request, UploadedFile file, CancellationToken cancellationToken) =>
+        CreateForOwnerAsync(currentUser.RequireUserId(), request, file, cancellationToken);
+
+    /// <summary>
+    /// Crée un morceau au nom d'un propriétaire explicite.
+    ///
+    /// Cette variante existe pour les traitements exécutés hors requête HTTP — l'import
+    /// d'une playlist s'exécute en arrière-plan et ne dispose donc d'aucun utilisateur
+    /// courant. Le contrôle d'accès incombe à l'appelant, qui doit avoir vérifié que
+    /// <paramref name="ownerId"/> est bien à l'origine de l'opération.
+    /// </summary>
+    public async Task<UploadAcceptedDto> CreateForOwnerAsync(
+        Guid ownerId,
+        CreateTrackRequest request,
+        UploadedFile file,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(file);
 
-        var userId = currentUser.RequireUserId();
+        var userId = ownerId;
         var extension = AudioFileValidator.ValidateNameAndSize(file.FileName, file.Length);
         await ValidateReferencesAsync(request.AlbumId, request.GenreId, cancellationToken);
 

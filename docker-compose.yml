@@ -62,6 +62,10 @@ services:
       Jwt__AccessTokenLifetimeSeconds: ${JWT_ACCESS_TOKEN_LIFETIME:-900}
       Jwt__RefreshTokenLifetimeDays: ${JWT_REFRESH_TOKEN_LIFETIME_DAYS:-30}
       Storage__RootPath: /data/storage
+      # Import depuis un lien YouTube. yt-dlp et ffmpeg sont fournis par l'image de l'API.
+      YtDlp__AudioQuality: ${YTDLP_AUDIO_QUALITY:-128K}
+      YtDlp__MaxDurationSeconds: ${YTDLP_MAX_DURATION_SECONDS:-900}
+      YtDlp__TimeoutSeconds: ${YTDLP_TIMEOUT_SECONDS:-300}
       Cors__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:8080}
       Swagger__Enabled: ${SWAGGER_ENABLED:-false}
       OpenTelemetry__OtlpEndpoint: ${OTLP_ENDPOINT:-}

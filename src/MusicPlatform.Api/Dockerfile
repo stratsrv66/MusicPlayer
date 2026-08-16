@@ -24,18 +24,33 @@ WORKDIR /app
 
 # curl sert uniquement à la sonde de santé du conteneur ; l'application s'exécute
 # sous le compte sans privilège fourni par l'image de base.
+#
+# L'import depuis un lien YouTube ajoute deux dépendances :
+#   - yt-dlp, paquet Python installé dans un environnement virtuel dédié afin de ne
+#     pas entrer en conflit avec les paquets Python du système ;
+#   - ffmpeg, dont yt-dlp se sert pour extraire la piste audio en MP3.
+# Retirer ces paquets ne casse pas l'application : seul l'import par lien devient
+# indisponible et répond alors 503.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl ffmpeg python3 python3-venv \
+    && python3 -m venv /opt/ytdlp \
+    && /opt/ytdlp/bin/pip install --no-cache-dir --upgrade yt-dlp \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /data/storage \
+    && mkdir -p /data/storage /data/import /data/cache \
     && chown -R app:app /data
 
 COPY --from=build --chown=app:app /app/publish ./
 
+# XDG_CACHE_HOME donne à yt-dlp un emplacement de cache accessible en écriture :
+# l'application tourne sous un compte sans privilège dont le dossier personnel
+# ne l'est pas nécessairement.
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
-    Storage__RootPath=/data/storage
+    Storage__RootPath=/data/storage \
+    YtDlp__ExecutablePath=/opt/ytdlp/bin/yt-dlp \
+    YtDlp__WorkingDirectory=/data/import \
+    XDG_CACHE_HOME=/data/cache
 
 USER app
 EXPOSE 8080

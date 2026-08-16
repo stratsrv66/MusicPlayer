@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MusicPlatform.Application.Abstractions;
+using MusicPlatform.Application.Features.Import;
 using MusicPlatform.Domain.Entities;
 using MusicPlatform.Domain.Enums;
 
@@ -143,6 +144,11 @@ public sealed class TrackProcessingService(
         entity.EmbeddedAlbum = metadata.Album;
         entity.EmbeddedGenre = metadata.Genre;
         entity.EmbeddedYear = metadata.Year;
+
+        // La clé de rapprochement est renseignée pour tout morceau, quelle que soit son
+        // origine : un import de playlist doit pouvoir reconnaître un morceau déjà
+        // présent dans la bibliothèque, y compris envoyé manuellement.
+        entity.MatchKey ??= MetadataNormalizer.BuildMatchKey(track.ArtistName, track.Title);
         entity.MetadataJson = JsonSerializer.Serialize(new
         {
             metadata.Bitrate,

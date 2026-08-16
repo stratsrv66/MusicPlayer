@@ -16,19 +16,25 @@ const ACCEPTED = '.mp3,.m4a,.aac,.flac,.ogg,.oga,.opus,.wav';
 /** Intervalle d'interrogation de l'état de traitement, en millisecondes. */
 const POLL_INTERVAL_MS = 1500;
 
+/** Origine du morceau importé : fichier local ou lien YouTube. */
+type ImportSource = 'file' | 'youtube';
+
 /**
- * Import d'un morceau.
+ * Import d'un morceau, depuis un fichier local ou depuis un lien YouTube.
  *
- * L'envoi utilise `XMLHttpRequest` plutôt que `fetch` : c'est la seule API du
- * navigateur qui expose la progression de l'upload, indispensable pour un fichier
- * pouvant atteindre 20 Mo.
+ * L'envoi d'un fichier utilise `XMLHttpRequest` plutôt que `fetch` : c'est la seule API
+ * du navigateur qui expose la progression de l'upload, indispensable pour un fichier
+ * pouvant atteindre 20 Mo. L'import par lien est en revanche une simple requête JSON :
+ * le téléchargement est entièrement réalisé par le serveur.
  */
 export function UploadPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: genres } = useQuery({ queryKey: ['genres'], queryFn: discoveryApi.genres, staleTime: 300000 });
 
+  const [source, setSource] = useState<ImportSource>('file');
   const [file, setFile] = useState<File | null>(null);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [title, setTitle] = useState('');
   const [artistName, setArtistName] = useState('');
   const [description, setDescription] = useState('');
@@ -43,7 +49,11 @@ export function UploadPage() {
   const [error, setError] = useState<unknown>(null);
   const [accepted, setAccepted] = useState<UploadAccepted | null>(null);
 
+  /** Vérifie la source choisie et retourne le message à afficher, ou null. */
   function validate(): string | null {
+    if (source === 'youtube') {
+      return isYoutubeUrl(youtubeUrl) ? null : 'Saisissez un lien de vidéo YouTube valide.';
+    }
     if (!file) {
       return 'Sélectionnez un fichier audio.';
     }
@@ -53,16 +63,8 @@ export function UploadPage() {
     return null;
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    setError(null);
-
-    const validationMessage = validate();
-    if (validationMessage) {
-      setError(new ApiError(400, { detail: validationMessage }));
-      return;
-    }
-
+  /** Envoie le fichier local et retourne l'accusé de réception. */
+  function submitFile(): Promise<UploadAccepted> {
     const form = new FormData();
     form.append('file', file!);
     form.append('visibility', visibility);
@@ -76,13 +78,41 @@ export function UploadPage() {
       form.append('tags', tag);
     }
 
+    return uploadWithProgress(form, setProgress);
+  }
+
+  /** Demande au serveur de télécharger la vidéo et retourne l'accusé de réception. */
+  function submitYoutubeLink(): Promise<UploadAccepted> {
+    return tracksApi.importFromYoutube({
+      url: youtubeUrl.trim(),
+      visibility,
+      title: title.trim() || undefined,
+      artistName: artistName.trim() || undefined,
+      description: description.trim() || undefined,
+      genreId: genreId || undefined,
+      year: year ? Number(year) : undefined,
+      tags: parseTags(tags),
+    });
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+
+    const validationMessage = validate();
+    if (validationMessage) {
+      setError(new ApiError(400, { detail: validationMessage }));
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
 
     try {
-      const result = await uploadWithProgress(form, setProgress);
+      const result = source === 'youtube' ? await submitYoutubeLink() : await submitFile();
       setAccepted(result);
 
+      // Une pochette fournie explicitement remplace celle déduite du fichier ou de la vidéo.
       if (cover) {
         await tracksApi.setCover(result.trackId, cover);
       }
@@ -94,6 +124,8 @@ export function UploadPage() {
     }
   }
 
+  const isSubmitDisabled = uploading || (source === 'file' ? !file : youtubeUrl.trim().length === 0);
+
   return (
     <>
       <h1>Importer un morceau</h1>
@@ -104,21 +136,67 @@ export function UploadPage() {
         <form onSubmit={handleSubmit} className="card" style={{ maxWidth: 620 }}>
           <ErrorMessage error={error} />
 
-          <div className="field">
-            <label htmlFor="upload-file">Fichier audio</label>
-            <input
-              id="upload-file"
-              type="file"
-              accept={ACCEPTED}
-              required
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              aria-describedby="upload-file-help"
-            />
-            <span id="upload-file-help" className="small muted">
-              Formats acceptés : MP3, M4A, AAC, FLAC, OGG, Opus, WAV. Taille maximale {formatBytes(MAX_FILE_BYTES)}.
-              {file && ` Fichier sélectionné : ${file.name} (${formatBytes(file.size)}).`}
-            </span>
-          </div>
+          <fieldset className="field">
+            <legend>Source du morceau</legend>
+            <div className="row">
+              <label>
+                <input
+                  type="radio"
+                  name="upload-source"
+                  value="file"
+                  checked={source === 'file'}
+                  onChange={() => setSource('file')}
+                />{' '}
+                Fichier audio
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="upload-source"
+                  value="youtube"
+                  checked={source === 'youtube'}
+                  onChange={() => setSource('youtube')}
+                />{' '}
+                Lien YouTube
+              </label>
+            </div>
+          </fieldset>
+
+          {source === 'file' ? (
+            <div className="field">
+              <label htmlFor="upload-file">Fichier audio</label>
+              <input
+                id="upload-file"
+                type="file"
+                accept={ACCEPTED}
+                required
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                aria-describedby="upload-file-help"
+              />
+              <span id="upload-file-help" className="small muted">
+                Formats acceptés : MP3, M4A, AAC, FLAC, OGG, Opus, WAV. Taille maximale {formatBytes(MAX_FILE_BYTES)}.
+                {file && ` Fichier sélectionné : ${file.name} (${formatBytes(file.size)}).`}
+              </span>
+            </div>
+          ) : (
+            <div className="field">
+              <label htmlFor="upload-youtube">Lien de la vidéo</label>
+              <input
+                id="upload-youtube"
+                type="url"
+                required
+                value={youtubeUrl}
+                onChange={(event) => setYoutubeUrl(event.target.value)}
+                placeholder="https://www.youtube.com/watch?v=…"
+                aria-describedby="upload-youtube-help"
+              />
+              <span id="upload-youtube-help" className="small muted">
+                Le serveur télécharge la piste audio en MP3 et utilise la miniature de la vidéo comme
+                pochette. Titre et artiste sont repris de la vidéo si vous les laissez vides. Assurez-vous
+                de disposer des droits nécessaires sur le contenu importé.
+              </span>
+            </div>
+          )}
 
           <div className="field">
             <label htmlFor="upload-title">Titre</label>
@@ -215,11 +293,13 @@ export function UploadPage() {
               aria-describedby="upload-cover-help"
             />
             <span id="upload-cover-help" className="small muted">
-              Sans pochette fournie, celle intégrée au fichier audio sera utilisée.
+              {source === 'youtube'
+                ? 'Sans pochette fournie, la miniature de la vidéo sera utilisée.'
+                : 'Sans pochette fournie, celle intégrée au fichier audio sera utilisée.'}
             </span>
           </div>
 
-          {uploading && (
+          {uploading && source === 'file' && (
             <div className="field">
               <label htmlFor="upload-progress">Envoi en cours</label>
               <div className="progress-bar" id="upload-progress" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
@@ -229,7 +309,13 @@ export function UploadPage() {
             </div>
           )}
 
-          <button type="submit" className="btn btn-primary" disabled={uploading || !file}>
+          {uploading && source === 'youtube' && (
+            <p className="small muted" role="status">
+              Téléchargement de la vidéo par le serveur… Cette étape peut prendre une minute.
+            </p>
+          )}
+
+          <button type="submit" className="btn btn-primary" disabled={isSubmitDisabled}>
             {uploading ? 'Envoi…' : 'Importer'}
           </button>
         </form>
@@ -321,6 +407,21 @@ function uploadWithProgress(form: FormData, onProgress: (percent: number) => voi
     xhr.onerror = () => reject(new ApiError(0, { detail: "L'envoi a échoué. Vérifiez votre connexion." }));
     xhr.send(form);
   });
+}
+
+/**
+ * Vérifie sommairement qu'une saisie ressemble à un lien de vidéo YouTube.
+ * La validation qui fait foi reste celle du serveur ; ce contrôle évite seulement
+ * un aller-retour réseau inutile.
+ */
+function isYoutubeUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw.trim());
+    const host = url.hostname.replace(/^www\./, '');
+    return host === 'youtu.be' || host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com';
+  } catch {
+    return false;
+  }
 }
 
 /** Découpe une saisie libre de tags en libellés individuels. */

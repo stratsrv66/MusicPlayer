@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MusicPlatform.Infrastructure.Persistence;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MusicPlatform.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260815230722_AddPlaylistImportAndExternalIds")]
+    partial class AddPlaylistImportAndExternalIds
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -467,6 +470,10 @@ namespace MusicPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("playlist_id");
 
+                    b.Property<bool>("ResolveOnYoutube")
+                        .HasColumnType("boolean")
+                        .HasColumnName("resolve_on_youtube");
+
                     b.Property<string>("SourcePlaylistId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -528,6 +535,11 @@ namespace MusicPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AlbumName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("album_name");
+
                     b.Property<string>("ArtistName")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -537,6 +549,21 @@ namespace MusicPlatform.Infrastructure.Persistence.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
+
+                    b.Property<string>("AudioPlatform")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("audio_platform");
+
+                    b.Property<string>("AudioSourceUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("audio_source_url");
+
+                    b.Property<string>("CoverUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("cover_url");
 
                     b.Property<int>("DurationSeconds")
                         .HasColumnType("integer")
@@ -550,6 +577,11 @@ namespace MusicPlatform.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ImportId")
                         .HasColumnType("uuid")
                         .HasColumnName("import_id");
+
+                    b.Property<string>("Isrc")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("isrc");
 
                     b.Property<int>("Position")
                         .HasColumnType("integer")
@@ -582,9 +614,17 @@ namespace MusicPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("track_id");
 
+                    b.Property<int?>("TrackNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("track_number");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
 
                     b.HasKey("Id")
                         .HasName("pk_playlist_import_items");
@@ -1164,6 +1204,11 @@ namespace MusicPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("embedded_year");
 
+                    b.Property<string>("Isrc")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("isrc");
+
                     b.Property<string>("MatchKey")
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)")
@@ -1183,8 +1228,15 @@ namespace MusicPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("source_platform");
 
+                    b.Property<int?>("TrackNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("track_number");
+
                     b.HasKey("TrackId")
                         .HasName("pk_track_metadata");
+
+                    b.HasIndex("Isrc")
+                        .HasDatabaseName("ix_track_metadata_isrc");
 
                     b.HasIndex("MatchKey")
                         .HasDatabaseName("ix_track_metadata_match_key");

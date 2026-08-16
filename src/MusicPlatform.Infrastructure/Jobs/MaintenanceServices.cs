@@ -57,13 +57,26 @@ public sealed class StalledJobRecoveryService(
             await queue.EnqueueUserExportAsync(export.Id, cancellationToken);
         }
 
-        if (pendingUploads.Count > 0 || pendingExports.Count > 0)
+        // Un import de playlist conserve son inventaire en base : le remettre en file
+        // suffit, le runner reprenant les morceaux restés en attente.
+        var pendingImports = await db.PlaylistImports
+            .Where(i => i.Status == PlaylistImportStatus.Pending || i.Status == PlaylistImportStatus.Running)
+            .Select(i => i.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var importId in pendingImports)
+        {
+            await queue.EnqueuePlaylistImportAsync(importId, cancellationToken);
+        }
+
+        if (pendingUploads.Count > 0 || pendingExports.Count > 0 || pendingImports.Count > 0)
         {
             await db.SaveChangesAsync(cancellationToken);
             logger.LogInformation(
-                "Recovered {Uploads} upload(s) and {Exports} export(s) after restart.",
+                "Recovered {Uploads} upload(s), {Exports} export(s) and {Imports} playlist import(s) after restart.",
                 pendingUploads.Count,
-                pendingExports.Count);
+                pendingExports.Count,
+                pendingImports.Count);
         }
     }
 

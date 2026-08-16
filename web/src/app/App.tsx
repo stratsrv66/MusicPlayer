@@ -10,6 +10,7 @@ import { LoginPage, RegisterPage } from '../pages/AuthPages';
 import { HomePage } from '../pages/HomePage';
 import { SearchPage, TagPage } from '../pages/SearchPage';
 import { TrackPage } from '../pages/TrackPage';
+import { ImportPlaylistPage } from '../pages/ImportPlaylistPage';
 import { EditTrackPage, UploadPage } from '../pages/UploadPage';
 import { PlaylistPage } from '../pages/PlaylistPage';
 import { ProfilePage } from '../pages/ProfilePage';
@@ -119,6 +120,7 @@ export function App() {
 
             <Route element={<RequireAuth />}>
               <Route path="upload" element={<UploadPage />} />
+              <Route path="import" element={<ImportPlaylistPage />} />
               <Route path="tracks/:trackId/edit" element={<EditTrackPage />} />
               <Route path="me" element={<MyProfilePage />} />
               <Route path="me/tracks" element={<MyTracksPage />} />

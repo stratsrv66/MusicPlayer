@@ -23,6 +23,7 @@ public interface IAppDbContext
     DbSet<TrackCover> TrackCovers { get; }
     DbSet<TrackTag> TrackTags { get; }
     DbSet<TrackLike> TrackLikes { get; }
+    DbSet<TrackExternalId> TrackExternalIds { get; }
     DbSet<UploadOperation> UploadOperations { get; }
 
     DbSet<Album> Albums { get; }
@@ -33,6 +34,8 @@ public interface IAppDbContext
     DbSet<PlaylistItem> PlaylistItems { get; }
     DbSet<PlaylistFollow> PlaylistFollows { get; }
     DbSet<PlaylistFavorite> PlaylistFavorites { get; }
+    DbSet<PlaylistImport> PlaylistImports { get; }
+    DbSet<PlaylistImportItem> PlaylistImportItems { get; }
 
     DbSet<Comment> Comments { get; }
     DbSet<PlayEvent> PlayEvents { get; }

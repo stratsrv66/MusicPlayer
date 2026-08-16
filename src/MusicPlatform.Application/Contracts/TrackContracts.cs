@@ -68,6 +68,28 @@ public sealed record CreateTrackRequest
     public int? Year { get; init; }
 }
 
+/// <summary>Import d'un morceau à partir d'un lien YouTube.</summary>
+public sealed record ImportYoutubeTrackRequest
+{
+    /// <summary>Lien de la vidéo. Les formes <c>watch</c>, <c>youtu.be</c> et <c>shorts</c> sont acceptées.</summary>
+    public string? Url { get; init; }
+
+    /// <summary>Titre du morceau. Vide, le titre de la vidéo est repris.</summary>
+    public string? Title { get; init; }
+
+    /// <summary>Nom d'artiste. Vide, la chaîne d'origine de la vidéo est reprise.</summary>
+    public string? ArtistName { get; init; }
+
+    public string? Description { get; init; }
+    public Guid? GenreId { get; init; }
+
+    /// <summary>Année de publication. Vide, celle de la vidéo est reprise.</summary>
+    public int? Year { get; init; }
+
+    public ContentVisibility Visibility { get; init; } = ContentVisibility.Private;
+    public IReadOnlyList<string>? Tags { get; init; }
+}
+
 /// <summary>Mise à jour partielle des métadonnées d'un morceau.</summary>
 public sealed record UpdateTrackRequest
 {

@@ -48,6 +48,7 @@ public sealed class Track
 
     public TrackFile? File { get; set; }
     public TrackMetadata? Metadata { get; set; }
+    public ICollection<TrackExternalId> ExternalIds { get; set; } = new List<TrackExternalId>();
     public ICollection<TrackCover> Covers { get; set; } = new List<TrackCover>();
     public ICollection<TrackTag> TrackTags { get; set; } = new List<TrackTag>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
@@ -163,8 +164,38 @@ public sealed class TrackMetadata
     public string? EmbeddedGenre { get; set; }
     public int? EmbeddedYear { get; set; }
 
+    /// <summary>Plateforme depuis laquelle le morceau a été importé, si ce n'est pas un envoi manuel.</summary>
+    public ExternalPlatform? SourcePlatform { get; set; }
+
+    /// <summary>
+    /// Clé de rapprochement « artiste|titre » normalisée (minuscules, sans accent ni
+    /// ponctuation). Indexée, elle sert de repli lorsque l'identifiant de plateforme ne
+    /// permet pas d'identifier un morceau déjà présent.
+    /// </summary>
+    public string? MatchKey { get; set; }
+
     /// <summary>Métadonnées complémentaires sérialisées en JSON (bitrate, codec, etc.).</summary>
     public string? MetadataJson { get; set; }
+}
+
+/// <summary>
+/// Identifiant d'un morceau chez une plateforme externe.
+///
+/// Un même enregistrement pouvant exister sur plusieurs plateformes, un morceau porte
+/// autant d'identifiants que de plateformes où il a été reconnu : un réimport depuis
+/// l'une d'elles retrouve alors le morceau déjà présent au lieu de le dupliquer.
+/// </summary>
+public sealed class TrackExternalId
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid TrackId { get; set; }
+    public Track Track { get; set; } = null!;
+    public ExternalPlatform Platform { get; set; }
+
+    /// <summary>Identifiant du morceau chez la plateforme.</summary>
+    public string ExternalId { get; set; } = string.Empty;
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>Déclinaison d'une pochette dans une taille donnée.</summary>

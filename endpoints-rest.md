@@ -223,6 +223,112 @@ tags[]
 cover
 ```
 
+### POST /tracks/import/youtube
+
+Importe un morceau depuis un lien YouTube. Le serveur télécharge la piste audio au
+format MP3 avec `yt-dlp`, puis installe la miniature de la vidéo comme pochette.
+Le morceau suit ensuite exactement le même traitement qu'un fichier envoyé
+manuellement (analyse des métadonnées, déclinaisons de pochette, publication).
+
+`application/json`. Authentification requise.
+
+Corps de la requête :
+
+``` text
+url          string, obligatoire  lien watch, youtu.be, shorts ou embed
+title        string, facultatif   par défaut : le titre de la vidéo
+artistName   string, facultatif   par défaut : la chaîne d'origine
+description  string, facultatif
+genreId      uuid,   facultatif
+year         int,    facultatif   par défaut : l'année de mise en ligne
+visibility   enum,   facultatif   PUBLIC | UNLISTED | PRIVATE (défaut PRIVATE)
+tags         string[], facultatif
+```
+
+Réponses :
+
+``` text
+202  { trackId, uploadOperationId, status }
+400  le lien n'est pas une URL de vidéo YouTube
+401  authentification requise
+413  la piste audio dépasse 20 Mo
+422  vidéo indisponible, privée, ou plus longue que la durée maximale configurée
+429  quota d'upload dépassé
+503  yt-dlp n'est pas installé sur le serveur
+```
+
+### Import de playlists YouTube
+
+Ces endpoints exigent tous une authentification. Chaque morceau est téléchargé par yt-dlp
+exactement comme un morceau importé depuis un lien YouTube isolé :
+`énumération → rapprochement → téléchargement → bibliothèque`.
+
+#### POST /imports/playlists/preview
+
+Décrit une playlist et ses morceaux sans rien importer. L'énumération ne transfère aucun
+média : les métadonnées relevées ici restent sommaires, les définitives étant lues au
+téléchargement.
+
+``` text
+url  string, obligatoire  lien de la playlist YouTube, ou son identifiant
+```
+
+``` text
+200  { playlist: { id, name, owner, coverUrl, trackCount, url },
+       tracks: [{ sourceId, title, artistName, durationSeconds }] }
+400  le lien ne désigne pas une playlist YouTube
+422  playlist illisible, privée ou inexistante
+503  yt-dlp n'est pas installé sur le serveur
+```
+
+#### GET /imports/playlists/profile?profileId={id}
+
+Playlists publiques d'une chaîne. `profileId` accepte un pseudonyme `@handle` ou l'URL
+complète de la chaîne.
+
+#### POST /imports/playlists
+
+Inventorie la playlist et programme son import en arrière-plan.
+
+``` text
+url             string, obligatoire
+visibility      enum,   facultatif  PUBLIC | UNLISTED | PRIVATE, défaut PRIVATE
+createPlaylist  bool,   facultatif  défaut true — crée la playlist miroir
+```
+
+``` text
+202  { id, name, status, progress: {...}, playlistId, ... }
+409  cette playlist est déjà en cours d'import
+422  playlist vide, illisible, ou au-delà de 500 morceaux
+```
+
+#### GET /imports/playlists/{importId}
+
+Progression et état de chaque morceau. Endpoint interrogé périodiquement pendant l'import.
+
+``` text
+200  { import: { status, progress: { total, processed, pending, running,
+                                     imported, duplicate, failed, cancelled } },
+       items: [{ position, title, artistName, durationSeconds, status,
+                 failureReason, attempts, trackId }] }
+```
+
+États d'un morceau : `PENDING`, `RUNNING`, `IMPORTED`, `DUPLICATE` (déjà dans la
+bibliothèque, rattaché sans téléchargement), `FAILED`, `CANCELLED`.
+
+#### GET /imports/playlists
+
+Imports récents de l'appelant.
+
+#### POST /imports/playlists/{importId}/cancel
+
+Annule un import en cours. Le morceau en cours de téléchargement va à son terme.
+
+#### POST /imports/playlists/{importId}/retry
+
+Remet en attente les morceaux en échec ou annulés, puis reprogramme l'import.
+Les morceaux déjà importés ne sont jamais retraités.
+
 ### POST /tracks/{trackId}/upload
 
 Permet d'envoyer/remplacer le fichier audio.

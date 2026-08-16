@@ -94,7 +94,40 @@ public sealed class TrackMetadataConfiguration : IEntityTypeConfiguration<TrackM
         builder.Property(m => m.EmbeddedArtist).HasMaxLength(200);
         builder.Property(m => m.EmbeddedAlbum).HasMaxLength(200);
         builder.Property(m => m.EmbeddedGenre).HasMaxLength(100);
+        builder.Property(m => m.SourcePlatform).HasMaxLength(16);
+        builder.Property(m => m.MatchKey).HasMaxLength(400);
         builder.Property(m => m.MetadataJson).HasColumnType("jsonb");
+
+        // Sert le rapprochement des morceaux à l'import.
+        builder.HasIndex(m => m.MatchKey);
+    }
+}
+
+/// <summary>
+/// Table <c>track_external_ids</c> : identifiants d'un morceau chez les plateformes externes.
+///
+/// L'unicité porte sur (morceau, plateforme) et non sur (plateforme, identifiant) :
+/// la bibliothèque étant propre à chaque utilisateur, deux utilisateurs peuvent
+/// légitimement importer le même morceau Spotify.
+/// </summary>
+public sealed class TrackExternalIdConfiguration : IEntityTypeConfiguration<TrackExternalId>
+{
+    public void Configure(EntityTypeBuilder<TrackExternalId> builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ToTable("track_external_ids");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Platform).HasMaxLength(16).IsRequired();
+        builder.Property(e => e.ExternalId).HasMaxLength(200).IsRequired();
+
+        builder.HasIndex(e => new { e.TrackId, e.Platform }).IsUnique();
+        builder.HasIndex(e => new { e.Platform, e.ExternalId });
+
+        builder.HasOne(e => e.Track)
+            .WithMany(t => t.ExternalIds)
+            .HasForeignKey(e => e.TrackId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
