@@ -97,6 +97,7 @@ public sealed class YtDlpAudioDownloader(YtDlpProcessRunner runner, ILogger<YtDl
         arguments.AddRange(
         [
             "--no-playlist",
+            "--format", "bestaudio/best",
             "--extract-audio",
             "--audio-format", Options.AudioFormat,
             "--audio-quality", Options.AudioQuality,

@@ -167,13 +167,48 @@ public sealed class YtDlpProcessRunner(IOptions<YtDlpOptions> options, ILogger<Y
         arguments.Add("--no-warnings");
         arguments.Add("--retries");
         arguments.Add("3");
-        arguments.Add("--socket-timeout");
-        arguments.Add("30");
+        arguments.Add("--extractor-args");
+        arguments.Add("youtube:player_client=ios,android,web");
 
-        if (!string.IsNullOrWhiteSpace(Options.CookiesFile) && File.Exists(Options.CookiesFile))
+        var cookiesFile = ResolveCookiesPath();
+        if (cookiesFile is not null)
         {
             arguments.Add("--cookies");
-            arguments.Add(Options.CookiesFile);
+            arguments.Add(cookiesFile);
+        }
+    }
+
+    /// <summary>
+    /// Résout et prépare un fichier de cookies accessible en écriture pour yt-dlp.
+    /// Si le fichier source est monté en lecture seule (ro), une copie temporaire
+    /// est créée pour éviter que yt-dlp ne plante lorsqu'il sauvegarde la session.
+    /// </summary>
+    private string? ResolveCookiesPath()
+    {
+        if (string.IsNullOrWhiteSpace(Options.CookiesFile) || !File.Exists(Options.CookiesFile))
+        {
+            return null;
+        }
+
+        try
+        {
+            var targetDir = !string.IsNullOrWhiteSpace(Options.WorkingDirectory) && Directory.Exists(Options.WorkingDirectory)
+                ? Options.WorkingDirectory
+                : Path.GetTempPath();
+
+            var workingCookies = Path.Combine(targetDir, "yt-dlp-cookies-session.txt");
+
+            if (!File.Exists(workingCookies) || File.GetLastWriteTimeUtc(Options.CookiesFile) > File.GetLastWriteTimeUtc(workingCookies))
+            {
+                File.Copy(Options.CookiesFile, workingCookies, overwrite: true);
+            }
+
+            return workingCookies;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to create writable copy of cookies file '{CookiesFile}'. Using original.", Options.CookiesFile);
+            return Options.CookiesFile;
         }
     }
 
