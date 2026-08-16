@@ -11,6 +11,7 @@ public sealed class YtDlpOptions
 {
     public const string SectionName = "YtDlp";
 
+
     /// <summary>
     /// Commande à exécuter. Le paquet Python <c>yt-dlp</c> installe un exécutable du même
     /// nom ; à défaut, renseigner <see cref="PythonPath"/> pour l'appeler comme module.
