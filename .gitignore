@@ -20,6 +20,8 @@ dist/
 *.pfx
 /storage/
 /data/
+cookies.txt
+*.cookies.txt
 
 # --- Éditeurs et système ---
 .vs/

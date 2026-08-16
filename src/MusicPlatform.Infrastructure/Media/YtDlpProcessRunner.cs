@@ -170,7 +170,7 @@ public sealed class YtDlpProcessRunner(IOptions<YtDlpOptions> options, ILogger<Y
         arguments.Add("--socket-timeout");
         arguments.Add("30");
 
-        if (!string.IsNullOrWhiteSpace(Options.CookiesFile))
+        if (!string.IsNullOrWhiteSpace(Options.CookiesFile) && File.Exists(Options.CookiesFile))
         {
             arguments.Add("--cookies");
             arguments.Add(Options.CookiesFile);
