@@ -169,7 +169,7 @@ public sealed class YtDlpProcessRunner(IOptions<YtDlpOptions> options, ILogger<Y
         arguments.Add("--retries");
         arguments.Add("3");
         arguments.Add("--extractor-args");
-        arguments.Add("youtube:player_client=ios,android,web");
+        arguments.Add("youtube:player_client=web,mweb,default");
 
         var cookiesFile = ResolveCookiesPath();
         if (cookiesFile is not null)
@@ -186,8 +186,14 @@ public sealed class YtDlpProcessRunner(IOptions<YtDlpOptions> options, ILogger<Y
     /// </summary>
     private string? ResolveCookiesPath()
     {
-        if (string.IsNullOrWhiteSpace(Options.CookiesFile) || !File.Exists(Options.CookiesFile))
+        if (string.IsNullOrWhiteSpace(Options.CookiesFile))
         {
+            return null;
+        }
+
+        if (!File.Exists(Options.CookiesFile))
+        {
+            logger.LogWarning("The configured cookies file '{CookiesFile}' does not exist or is not accessible.", Options.CookiesFile);
             return null;
         }
 
@@ -202,6 +208,7 @@ public sealed class YtDlpProcessRunner(IOptions<YtDlpOptions> options, ILogger<Y
             if (!File.Exists(workingCookies) || File.GetLastWriteTimeUtc(Options.CookiesFile) > File.GetLastWriteTimeUtc(workingCookies))
             {
                 File.Copy(Options.CookiesFile, workingCookies, overwrite: true);
+                logger.LogInformation("Copied cookies from '{Source}' to writable '{Target}'.", Options.CookiesFile, workingCookies);
             }
 
             return workingCookies;
